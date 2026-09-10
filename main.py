@@ -34,7 +34,6 @@ class Pelota:
     def __init__(self, x, y, z):
         self.pos = np.array([x, y, z], dtype=float)
         self.vel = np.array([0.0, -40.0, 0.0], dtype=float)
-        # Paleta de colores vivos y saturados
         self.color = [random.uniform(0.4, 1.0), random.uniform(0.4, 1.0), random.uniform(0.4, 1.0)]
 
     def integrar_movimiento(self, dt):
@@ -45,6 +44,7 @@ class Pelota:
 # 3. MOTOR FÍSICO
 # ==========================================
 def boca_obstruida():
+    """ Determina si hay pelotas en el borde superior del vaso obstruyendo el paso """
     for p in pelotas:
         if p.pos[1] >= (H_c - r_e):
             dist_centro = np.sqrt(p.pos[0]**2 + p.pos[2]**2)
@@ -114,11 +114,12 @@ def resolver_fisica_paso(dt):
                         p2.vel -= normal * impulso
 
 # ==========================================
-# 4. RENDERIZADO DE UI (HUD 2D)
+# 4. RENDERIZADO DE UI (HUD 2D CORREGIDO)
 # ==========================================
 def iniciar_modo_2d(w_win=900, h_win=900):
     glDisable(GL_LIGHTING)
     glDisable(GL_DEPTH_TEST)
+    glDisable(GL_TEXTURE_2D)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
@@ -156,24 +157,24 @@ def dibujar_rectangulo_2d(x, y, w, h, color_rgba):
     glVertex2f(x, y + h)
     glEnd()
 
-def dibujar_hud(fuente_titulo, fuente_datos, fuente_sub, pelotas_dentro, vaso_lleno):
+def dibujar_hud(fuente_titulo, fuente_datos, fuente_sub, pelotas_dentro, pelotas_desbordadas, vaso_lleno):
     iniciar_modo_2d()
 
-    # Panel lateral izquierdo (Tarjeta UI)
-    dibujar_rectangulo_2d(20, 680, 280, 200, (0.05, 0.08, 0.14, 0.85))
+    # Panel lateral más compacto (Ancho 250px) para evitar solapamiento
+    dibujar_rectangulo_2d(15, 650, 250, 230, (0.04, 0.07, 0.12, 0.92))
     
-    # Borde elegante del panel
-    glColor4f(0.0, 0.75, 1.0, 0.6)
+    # Borde cian del panel
+    glColor4f(0.0, 0.75, 1.0, 0.7)
     glLineWidth(2.0)
     glBegin(GL_LINE_LOOP)
-    glVertex2f(20, 680)
-    glVertex2f(300, 680)
-    glVertex2f(300, 880)
-    glVertex2f(20, 880)
+    glVertex2f(15, 650)
+    glVertex2f(265, 650)
+    glVertex2f(265, 880)
+    glVertex2f(15, 880)
     glEnd()
 
-    # Textos de Telemetría
-    render_texto("ESTADO DEL VASO", 35, 850, fuente_titulo, (0, 215, 255))
+    # Título y datos
+    render_texto("ESTADO DEL VASO", 28, 852, fuente_titulo, (0, 215, 255))
     
     vol_ocupado = pelotas_dentro * VOLUMEN_PELOTA
     pct_ocupacion = min(100.0, (vol_ocupado / VOLUMEN_VASO) * 100.0)
@@ -183,40 +184,43 @@ def dibujar_hud(fuente_titulo, fuente_datos, fuente_sub, pelotas_dentro, vaso_ll
     if vaso_lleno:
         texto_estado += " (¡LLENO!)"
 
-    render_texto(texto_estado, 35, 815, fuente_datos, color_estado)
-    render_texto(f"Ocupación aprox: {pct_ocupacion:.1f}%", 35, 785, fuente_datos, (220, 220, 220))
-    render_texto(f"Volumen útil: {VOLUMEN_VASO:.0f} cm³", 35, 755, fuente_datos, (170, 170, 170))
+    render_texto(texto_estado, 28, 822, fuente_datos, color_estado)
+    
+    # Contador de Desborde con resalte visual
+    color_desborde = (255, 70, 70) if pelotas_desbordadas > 0 else (160, 160, 160)
+    render_texto(f"Bolas desbordadas: {pelotas_desbordadas}", 28, 794, fuente_datos, color_desborde)
+
+    # Medición de Volumen en cm³
+    render_texto(f"Vol. ocupado: {vol_ocupado:.1f} cm³", 28, 766, fuente_datos, (255, 230, 0))
+    render_texto(f"Capacidad: {VOLUMEN_VASO:.1f} cm³ ({pct_ocupacion:.1f}%)", 28, 738, fuente_sub, (180, 200, 220))
 
     # Barra de Capacidad Visual
-    dibujar_rectangulo_2d(35, 705, 250, 18, (0.1, 0.15, 0.2, 0.9))
+    dibujar_rectangulo_2d(28, 670, 224, 14, (0.1, 0.15, 0.22, 0.9))
     
-    # Color dinámico de la barra según llenado
     if pct_ocupacion < 60:
-        c_bar = (0.0, 0.8, 0.4, 0.9)
+        c_bar = (0.0, 0.8, 0.4, 0.95)
     elif pct_ocupacion < 90:
-        c_bar = (0.9, 0.7, 0.0, 0.9)
+        c_bar = (0.9, 0.7, 0.0, 0.95)
     else:
-        c_bar = (0.9, 0.2, 0.2, 0.9)
+        c_bar = (0.9, 0.2, 0.2, 0.95)
 
-    w_fill = int((pct_ocupacion / 100.0) * 250)
+    w_fill = int((pct_ocupacion / 100.0) * 224)
     if w_fill > 0:
-        dibujar_rectangulo_2d(35, 705, w_fill, 18, c_bar)
+        dibujar_rectangulo_2d(28, 670, w_fill, 14, c_bar)
 
-    # Controles en la parte inferior
-    dibujar_rectangulo_2d(20, 20, 860, 40, (0.05, 0.08, 0.14, 0.85))
-    render_texto("[ESPACIO] Tirar pelota | [A] Flujo continuo | [Clic Izq] Orbitar | [Clic Der / S] Acomodar | [R] Vaciar", 35, 32, fuente_sub, (200, 220, 240))
+    # Panel Inferior de Controles
+    dibujar_rectangulo_2d(15, 15, 870, 38, (0.04, 0.07, 0.12, 0.90))
+    render_texto("[ESPACIO] Tirar | [A] Continuo | [Clic Izq] Orbitar | [Clic Der / S] Acomodar | [R] Vaciar", 28, 27, fuente_sub, (200, 220, 240))
 
     finalizar_modo_2d()
 
 # ==========================================
-# 5. FUNCIONES DE DIBUJO OPENGL (CRISTAL 3D)
+# 5. RENDERIZADO 3D (VASO Y ESFERAS)
 # ==========================================
 def dibujar_vaso_cristal():
-    """ Dibuja un recipiente de vidrio real utilizando blending y pases de cara """
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     
-    # Configurar material tipo cristal
     especular_vidrio = [1.0, 1.0, 1.0, 1.0]
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, especular_vidrio)
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 96.0)
@@ -224,10 +228,8 @@ def dibujar_vaso_cristal():
     slices = 48
     stacks = 1
 
-    # --- Pase 1: Caras Traseras del Cilindro (Vidrio interior) ---
     glEnable(GL_CULL_FACE)
     glCullFace(GL_FRONT)
-    
     glColor4f(0.4, 0.7, 0.9, 0.12)
     quadric = gluNewQuadric()
     gluQuadricDrawStyle(quadric, GLU_FILL)
@@ -238,10 +240,8 @@ def dibujar_vaso_cristal():
     gluCylinder(quadric, R_c, R_c, H_c, slices, stacks)
     glPopMatrix()
 
-    # --- Pase 2: Caras Frontales del Cilindro (Vidrio exterior) ---
     glCullFace(GL_BACK)
     glColor4f(0.5, 0.8, 1.0, 0.22)
-    
     glPushMatrix()
     glRotatef(-90, 1, 0, 0)
     gluCylinder(quadric, R_c, R_c, H_c, slices, stacks)
@@ -249,7 +249,6 @@ def dibujar_vaso_cristal():
     
     glDisable(GL_CULL_FACE)
 
-    # --- Base de Vidrio Grueso ---
     glDepthMask(GL_FALSE)
     glColor4f(0.3, 0.6, 0.8, 0.4)
     glBegin(GL_POLYGON)
@@ -259,10 +258,7 @@ def dibujar_vaso_cristal():
         glVertex3f(R_c * np.cos(theta), 0.0, R_c * np.sin(theta))
     glEnd()
 
-    # --- Biseles y Anillos Especulares del Cristal ---
     glLineWidth(2.5)
-    
-    # Anillo Base
     glColor4f(0.7, 0.9, 1.0, 0.7)
     glBegin(GL_LINE_LOOP)
     for i in range(slices):
@@ -270,7 +266,6 @@ def dibujar_vaso_cristal():
         glVertex3f(R_c * np.cos(theta), 0.0, R_c * np.sin(theta))
     glEnd()
 
-    # Anillo Superior (Boca del vaso)
     glColor4f(0.8, 0.95, 1.0, 0.9)
     glBegin(GL_LINE_LOOP)
     for i in range(slices):
@@ -284,7 +279,6 @@ def dibujar_esfera(p):
     glPushMatrix()
     glTranslatef(p.pos[0], p.pos[1], p.pos[2])
     
-    # Material plásticoso con brillo especular
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.6, 0.6, 0.6, 1.0])
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 32.0)
     
@@ -301,22 +295,20 @@ def dibujar_esfera(p):
 def main():
     pygame.init()
     pygame.font.init()
-    fuente_titulo = pygame.font.SysFont('Arial', 18, bold=True)
-    fuente_datos = pygame.font.SysFont('Arial', 15, bold=True)
-    fuente_sub = pygame.font.SysFont('Arial', 14)
+    fuente_titulo = pygame.font.SysFont('Arial', 17, bold=True)
+    fuente_datos = pygame.font.SysFont('Arial', 14, bold=True)
+    fuente_sub = pygame.font.SysFont('Arial', 12)
 
     display = (900, 900)
     pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("Simulación 3D: Vaso de Cristal con HUD Interactivo")
+    pygame.display.set_caption("Simulación 3D: Vaso de Cristal con Medición de Volumen")
 
-    # Configuración de renderizado 3D e Iluminación
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
     glEnable(GL_COLOR_MATERIAL)
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE)
 
-    # Luz principal (Superior Derecha)
     glLightfv(GL_LIGHT0, GL_POSITION, (40.0, 80.0, 50.0, 1.0))
     glLightfv(GL_LIGHT0, GL_AMBIENT, (0.25, 0.25, 0.3, 1.0))
     glLightfv(GL_LIGHT0, GL_DIFFUSE, (0.95, 0.95, 0.95, 1.0))
@@ -403,34 +395,33 @@ def main():
 
         resolver_fisica_paso(dt)
 
-        pelotas_dentro = sum(1 for p in pelotas if p.pos[1] <= H_c)
-        vaso_lleno = boca_obstruida()
+        # --- CRITERIO DE DESBORDE CORREGIDO ---
+        # Una pelota cuenta como dentro solo si su centro está totalmente por debajo del borde superior (H_c - r_e)
+        pelotas_dentro = sum(1 for p in pelotas if p.pos[1] <= (H_c - r_e))
+        pelotas_desbordadas = len(pelotas) - pelotas_dentro
+        vaso_lleno = boca_obstruida() or pelotas_desbordadas > 0
 
-        # Limpiar escena
+        # Renderizado
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glClearColor(0.06, 0.07, 0.10, 1.0)
 
-        # Configurar Cámara 3D
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(45, (display[0] / display[1]), 0.1, 300.0)
 
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        glTranslatef(0.0, -H_c * 0.45, -distancia)
+        
+        # Desplazamiento horizontal (+3.5 cm) para descentrar el cilindro y despejar el HUD izquierdo
+        glTranslatef(3.5, -H_c * 0.45, -distancia)
         glRotatef(rot_x, 1, 0, 0)
         glRotatef(rot_y, 0, 1, 0)
 
-        # --- ORDEN DE RENDERIZADO OPTIMIZADO PARA TRANSPARENCIA ---
-        # 1. Objeto opaco (Esferas)
         for p in pelotas:
             dibujar_esfera(p)
 
-        # 2. Objeto transparente (Vaso de Cristal)
         dibujar_vaso_cristal()
-
-        # 3. Interfaz de Usuario 2D
-        dibujar_hud(fuente_titulo, fuente_datos, fuente_sub, pelotas_dentro, vaso_lleno)
+        dibujar_hud(fuente_titulo, fuente_datos, fuente_sub, pelotas_dentro, pelotas_desbordadas, vaso_lleno)
 
         pygame.display.flip()
 
