@@ -206,16 +206,17 @@ def main():
     pantalla = pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
     pygame.display.set_caption("Simulación 3D: Vaso Cilíndrico con Límite de Capacidad")
 
-    gluPerspective(45, (display[0] / display[1]), 0.1, 300.0)
-    glTranslatef(0.0, -H_c * 0.45, -H_c * 2.8)
-    glRotatef(15, 1, 0, 0)
-
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
     glEnable(GL_COLOR_MATERIAL)
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE)
     glLightfv(GL_LIGHT0, GL_POSITION, (20.0, 50.0, 30.0, 1.0))
+
+    # --- Variables de Órbita para Control de Cámara ---
+    rot_x = 15.0   # Elevación inicial (grados)
+    rot_y = 0.0    # Giros horizontales (grados)
+    distancia = H_c * 2.8  # Zoom o distancia al vaso
 
     dragging_left = False
     dragging_right = False
@@ -235,12 +236,9 @@ def main():
         return True
 
     def acomodar_pelotas_suave():
-        """ Vibra sutilmente las pelotas para acomodarlas sin romper colisiones """
         for p in pelotas:
-            # Solo un pequeño impulso lateral suave para que rueden a los huecos
             p.vel[0] += random.uniform(-12.0, 12.0)
             p.vel[2] += random.uniform(-12.0, 12.0)
-            # Ligero asentamiento hacia abajo
             p.vel[1] -= random.uniform(0.0, 15.0)
 
     running = True
@@ -260,19 +258,18 @@ def main():
                 elif event.key == K_s:
                     acomodar_pelotas_suave()
             elif event.type == MOUSEBUTTONDOWN:
-                if event.button == 1:       # Clic Izquierdo -> Rotar vista
+                if event.button == 1:       # Clic Izquierdo -> Orbitar
                     dragging_left = True
                     last_mouse = event.pos
                 elif event.button == 3:     # Clic Derecho -> Vibrar suave
                     dragging_right = True
                     last_mouse = event.pos
                     acomodar_pelotas_suave()
-                elif event.button == 4:
-                    glTranslatef(0, 0, 2.5)
-                elif event.button == 5:
-                    glTranslatef(0, 0, -2.5)
+                elif event.button == 4:     # Rueda arriba -> Zoom In
+                    distancia = max(H_c * 1.2, distancia - 2.0)
+                elif event.button == 5:     # Rueda abajo -> Zoom Out
+                    distancia = min(H_c * 6.0, distancia + 2.0)
             elif event.type == MOUSEBUTTONUP:
-                # Se limpian adecuadamente ambos estados
                 if event.button == 1:
                     dragging_left = False
                 elif event.button == 3:
@@ -281,11 +278,16 @@ def main():
                 if dragging_left:
                     dx = event.pos[0] - last_mouse[0]
                     dy = event.pos[1] - last_mouse[1]
-                    glRotatef(dx * 0.4, 0, 1, 0)
-                    glRotatef(dy * 0.4, 1, 0, 0)
+                    
+                    # Sensibilidad ajustable
+                    rot_y += dx * 0.4
+                    rot_x += dy * 0.4
+                    
+                    # Limitar la elevación para no voltear la cámara boca abajo
+                    rot_x = max(-85.0, min(85.0, rot_x))
+                    
                     last_mouse = event.pos
                 elif dragging_right:
-                    # Mover el ratón con clic derecho solo agita con baja intensidad
                     dx = abs(event.pos[0] - last_mouse[0])
                     dy = abs(event.pos[1] - last_mouse[1])
                     if dx + dy > 5:
@@ -302,10 +304,23 @@ def main():
         pelotas_dentro = sum(1 for p in pelotas if p.pos[1] <= H_c)
         vaso_lleno = boca_obstruida()
 
-        # Renderizado
+        # --- Reconstruir Matriz de Vista en cada Frame ---
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glClearColor(0.08, 0.09, 0.12, 1.0)
 
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        gluPerspective(45, (display[0] / display[1]), 0.1, 300.0)
+
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        
+        # Posicionar cámara fija mirando al centro del vaso
+        glTranslatef(0.0, -H_c * 0.45, -distancia)
+        glRotatef(rot_x, 1, 0, 0)
+        glRotatef(rot_y, 0, 1, 0)
+
+        # Renderizar objetos
         dibujar_vaso()
         for p in pelotas:
             dibujar_esfera(p)
@@ -316,7 +331,7 @@ def main():
             texto_contador += " (¡VASO LLENO!)"
 
         render_texto(pantalla, texto_contador, 30, 850, fuente_hud)
-        render_texto(pantalla, "[ESPACIO] Tirar | [A] Continuo | [Clic Der / S] Acomodar | [R] Vaciar", 30, 825, fuente_sub)
+        render_texto(pantalla, "[ESPACIO] Tirar | [A] Continuo | [Clic Izq] Orbitar | [Clic Der / S] Acomodar | [R] Vaciar", 30, 825, fuente_sub)
 
         pygame.display.flip()
 
