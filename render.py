@@ -96,7 +96,8 @@ def dibujar_hud(fuente_titulo, fuente_datos, fuente_sub, pelotas_dentro, pelotas
 
     # Panel Inferior
     dibujar_rectangulo_2d(15, 15, 870, 38, (0.04, 0.07, 0.12, 0.90))
-    render_texto("[ESPACIO] Tirar | [A] Continuo | [Clic Izq] Orbitar | [Clic Der / S] Acomodar | [R] Vaciar", 28, 27, fuente_sub, (200, 220, 240))
+    # Cambiar la siguiente línea dentro de dibujar_hud():
+    render_texto("[ESPACIO] Tirar | [A] Continuo | [Clic Izq] Orbitar | [Clic Der] Arrastrar / Sacudir | [R] Vaciar", 28, 27, fuente_sub, (200, 220, 240))
 
     finalizar_modo_2d()
 

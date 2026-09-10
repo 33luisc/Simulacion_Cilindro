@@ -1,6 +1,59 @@
 import numpy as np
+from OpenGL.GL import *
+from OpenGL.GLU import *
 import random
 from config import R_c, H_c, r_e, d_e, RESTITUCION, FRICCION_PISO
+
+def obtener_rayo_desde_mouse(mouse_x, mouse_y, display_size):
+    """ Convierte las coordenadas 2D de la pantalla a un rayo 3D en el espacio del mundo """
+    viewport = glGetIntegerv(GL_VIEWPORT)
+    modelview = glGetDoublev(GL_MODELVIEW_MATRIX)
+    projection = glGetDoublev(GL_PROJECTION_MATRIX)
+
+    # Invertir Y porque Pygame tiene el origen arriba a la izquierda
+    win_y = viewport[3] - float(mouse_y)
+    win_x = float(mouse_x)
+
+    # Obtener punto plano cercano (z=0) y lejano (z=1)
+    near_point = gluUnProject(win_x, win_y, 0.0, modelview, projection, viewport)
+    far_point = gluUnProject(win_x, win_y, 1.0, modelview, projection, viewport)
+
+    origen = np.array(near_point, dtype=float)
+    direccion = np.array(far_point, dtype=float) - origen
+    direccion /= np.linalg.norm(direccion)
+
+    return origen, direccion
+
+def seleccionar_pelota(origen_rayo, dir_rayo, pelotas):
+    """ Busca la pelota más cercana que intersecte con el rayo del cursor """
+    pelota_seleccionada = None
+    dist_minima = float('inf')
+
+    for p in pelotas:
+        # Vector desde el origen del rayo al centro de la esfera
+        oc = p.pos - origen_rayo
+        t = np.dot(oc, dir_rayo)
+
+        if t > 0:  # La pelota está delante de la cámara
+            punto_cercano = origen_rayo + t * dir_rayo
+            dist_al_rayo = np.linalg.norm(p.pos - punto_cercano)
+
+            if dist_al_rayo <= r_e and t < dist_minima:
+                dist_minima = t
+                pelota_seleccionada = p
+
+    return pelota_seleccionada, dist_minima
+
+def aplicar_fuerza_arrastre(pelota, objetivo_3d, dt):
+    """ Aplica una fuerza elástica (muelle) hacia el punto objetivo manteniendo la física """
+    K_STIFFNESS = 150.0  # Rigidez del resorte
+    DAMPING = 12.0       # Amortiguación para evitar oscilaciones descontroladas
+
+    diferencia = objetivo_3d - pelota.pos
+    fuerza = diferencia * K_STIFFNESS - pelota.vel * DAMPING
+    
+    # F = m * a  (asumiendo masa = 1.0)
+    pelota.vel += fuerza * dt
 
 def boca_obstruida(pelotas):
     """ Determina si hay pelotas en el borde superior del vaso obstruyendo el paso """
