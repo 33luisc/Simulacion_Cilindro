@@ -50,14 +50,14 @@ def dibujar_hud(fuente_titulo, fuente_datos, fuente_sub, pelotas_dentro, pelotas
     iniciar_modo_2d()
 
     # Panel lateral
-    dibujar_rectangulo_2d(15, 650, 250, 230, (0.04, 0.07, 0.12, 0.92))
+    dibujar_rectangulo_2d(15, 670, 250, 230, (0.04, 0.07, 0.12, 0.92))
     
     # Borde cian
     glColor4f(0.0, 0.75, 1.0, 0.7)
     glLineWidth(2.0)
     glBegin(GL_LINE_LOOP)
-    glVertex2f(15, 650)
-    glVertex2f(265, 650)
+    glVertex2f(15, 670)
+    glVertex2f(265, 670)
     glVertex2f(265, 880)
     glVertex2f(15, 880)
     glEnd()
@@ -82,7 +82,7 @@ def dibujar_hud(fuente_titulo, fuente_datos, fuente_sub, pelotas_dentro, pelotas
     render_texto(f"Capacidad: {VOLUMEN_VASO:.1f} cm³ ({pct_ocupacion:.1f}%)", 28, 738, fuente_sub, (180, 200, 220))
 
     # Barra de estado
-    dibujar_rectangulo_2d(28, 670, 224, 14, (0.1, 0.15, 0.22, 0.9))
+    dibujar_rectangulo_2d(28, 700, 224, 14, (0.1, 0.15, 0.22, 0.9))
     if pct_ocupacion < 60:
         c_bar = (0.0, 0.8, 0.4, 0.95)
     elif pct_ocupacion < 90:
@@ -92,10 +92,10 @@ def dibujar_hud(fuente_titulo, fuente_datos, fuente_sub, pelotas_dentro, pelotas
 
     w_fill = int((pct_ocupacion / 100.0) * 224)
     if w_fill > 0:
-        dibujar_rectangulo_2d(28, 670, w_fill, 14, c_bar)
+        dibujar_rectangulo_2d(28, 700, w_fill, 14, c_bar)
 
     # Panel Inferior
-    dibujar_rectangulo_2d(15, 15, 870, 38, (0.04, 0.07, 0.12, 0.90))
+    dibujar_rectangulo_2d(15, 15, 830, 38, (0.04, 0.07, 0.12, 0.90))
     # Cambiar la siguiente línea dentro de dibujar_hud():
     render_texto("[ESPACIO] Tirar | [A] Continuo | [Clic Izq] Orbitar | [Clic Der] Arrastrar / Sacudir | [R] Vaciar", 28, 27, fuente_sub, (200, 220, 240))
 
